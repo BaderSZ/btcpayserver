@@ -78,14 +78,16 @@ else
                     <p class="card-title text-center">@item.Description</p>
                     
                 }
-                <div class="w-100 mb-3 fs-5 text-center">
+                <div class="w-100 mb-3 fs-5 text-center" style="display: table;">
                     @switch (item.Price.Type)
                     {
                         case ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Topup:
                             <span>Any amount</span>
                             break;
                         case ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Minimum:
-                            <span>@item.Price.Formatted minimum</span>
+                            <span>@item.SuggestedPrice.Formatted recommended</span>
+                            <br>
+                            <small>@item.Price.Formatted minimum</small>
                             break;
                         case ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Fixed:
                             @item.Price.Formatted
