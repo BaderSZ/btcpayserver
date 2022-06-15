@@ -70,7 +70,8 @@ $(document).ready(function(){
             cart.addItem({
                 id: item.id,
                 title: item.title,
-                price: item.price,
+                // is there a better way to check?
+                price: item.suggestedPrice.value !== null ? item.suggestedPrice : item.price,
                 image: typeof item.image != 'undefined' ? item.image : null,
                 inventory: item.inventory
             });
