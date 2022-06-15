@@ -77,7 +77,30 @@
                                            required
                                            v-model="editingItem.price" ref="txtPrice"/>
                                 </div>
-
+                            </div>
+                            <div  v-show="editingItem.custom === 'minimum'"> 
+                                <div class="form-group d-flex align-items-center">
+                                    <input type="checkbox"
+                                        id="suggestedPriceToggle"
+                                        class="btcpay-toggle me-2"
+                                        v-on:change="toggleSuggestedPrice()"
+                                        v-model="editingItem.suggestedPrice"
+                                        :checked="this.enablePriceSuggestion"/>
+                                    <label class="form-label mb-0">Enable price recommendation</label>
+                                </div>
+                                <div class="form-group" id="suggestedPriceGroup" v-show="this.enablePriceSuggestion">
+                                        <label class="form-label">Suggested Price</label>
+                                        <input class="form-control mb-2"
+                                            id="suggestedPrice"
+                                            inputmode="decimal"
+                                            pattern="\d*"
+                                            step="any"
+                                            :min="editingItem.price"
+                                            type="number"
+                                            v-model="editingItem.suggestedPrice"
+                                            :value="editingItem.suggestedPrice??editingItem.price"
+                                            ref="txtSuggestedPrice"/>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Image</label>
@@ -128,7 +151,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 { text: 'Minimum', value: "minimum" },
                 { text: 'Custom', value: 'topup' },
             ],
-            elementId: "@Model.templateId"
+            elementId: "@Model.templateId",
+            enablePriceSuggestion: false,
         },
         computed: {
             anyImages: function(){
@@ -175,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Split products from the template
                 for (var kl in lines) {
                     var line = lines[kl], product = line.split("\n"), goingThroughMethods = false,
-                        id = null, price = null, title = null, description = null, image = null,
+                        id = null, price = null, suggestedPrice = null, title = null, description = null, image = null,
                         custom = null, buyButtonText = null, inventory = null, paymentMethods = [],
                         disabled = false;
 
@@ -190,9 +214,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         } else {
                             goingThroughMethods = false;
                         }
-            
                         if (productProperty.indexOf('price:') !== -1) {
                             price = parseFloat(productProperty.replace('price:', '').trim()).noExponents();
+                        }
+                        if (productProperty.indexOf('suggested:') !== -1) {
+                            suggestedPrice = parseFloat(productProperty.replace('suggested:', '').trim()).noExponents();
                         }
                         if (productProperty.indexOf('title:') !== -1) {
                             title = productProperty.replace('title:', '').trim();
@@ -233,6 +259,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             id: id,
                             title: title,
                             price: price,
+                            suggestedPrice: isNaN(suggestedPrice) ? null : suggestedPrice,
                             image: image || null,
                             description:  description || '',
                             custom: custom || "fixed",
@@ -253,6 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             id = product.id,
                             title = product.title,
                             price = product.custom === 'topup'? null : product.price??0,
+                            suggestedPrice =  isNaN(product.suggestedPrice) ? null : product.suggestedPrice,
                             image = product.image,
                             description = product.description,
                             custom = product.custom,
@@ -262,6 +290,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             disabled = product.disabled;
                         let itemTemplate = id+":\n";                        
                        itemTemplate += ( product.custom === 'topup'? '' : ('  price: ' + parseFloat(price).noExponents() + '\n'));
+                       itemTemplate += ((product.custom === 'minimum' && !!suggestedPrice) ? ('  suggested: ' + parseFloat(suggestedPrice).noExponents() + '\n') : '');
                         itemTemplate+= '  title: ' + title + '\n';
 
                         if (description) {
@@ -296,12 +325,13 @@ document.addEventListener("DOMContentLoaded", function () {
             editItem: function(index){
                 this.errors = [];
                 if(index < 0){
-                    this.editingItem = {index:-1, id:"", title: "", price: 0, image: "", description: "", custom: "fixed", inventory: null, paymentMethods: [], disabled: false};
+                    this.editingItem = {index:-1, id:"", title: "", price: 0, suggestedPrice: null, image: "", description: "", custom: "fixed", inventory: null, paymentMethods: [], disabled: false};
                 }else{
                     this.editingItem = {...this.items[index], index};
                 }
                 
                 this.editingItem = this.unEscape(this.editingItem);
+                this.enablePriceSuggestion = this.editingItem.suggestedPrice??false;
                 this.getModalElement().modal("show");
             },
             removeItem: function(index){
@@ -344,6 +374,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 
                 if (this.editingItem.custom !== "topup" && !this.$refs.txtPrice.checkValidity()) {
                     this.errors.push("Price must be a valid number");
+                }
+                if (!this.$refs.txtSuggestedPrice.checkValidity()) {
+                    this.errors.push("Suggested price must be a valid number");
+                }
+                if (!!this.$refs.txtSuggestedPrice) {
+                    // var sTempPrice = parseInt(this.$refs.txtSuggestedPrice.value);
+                    // var sPrice = parseInt(this.$refs.txtPrice.value);
+                    if (parseInt(this.$refs.txtSuggestedPrice.value) < parseInt(this.$refs.txtPrice.value)) {
+                        this.errors.push("Suggested price must be greater than or equal to the minimum price");
+                    }
                 }
                 if (!this.$refs.txtTitle.checkValidity()) {
                     this.errors.push("Title is required and cannot have * or #");
@@ -400,6 +440,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 return $('<div/>').html(k).text();
+            },
+            toggleSuggestedPrice : function(){
+                if ($("#suggestedPriceToggle").is(":checked")) {
+                    $("#suggestedPriceGroup").show();
+                    this.enablePriceSuggestion = true;
+                    this.editingItem.suggestedPrice = this.editingItem.price;
+                } else {
+                    $("#suggestedPriceGroup").hide();
+                    this.enablePriceSuggestion = false;
+                    this.editingItem.suggestedPrice = null;
+                }
+                this.toYml();
             }
         }
     });

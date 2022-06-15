@@ -408,6 +408,8 @@ namespace BTCPayServer.Services.Apps
                 itemNode.Add("title", new YamlScalarNode(item.Title));
                 if (item.Price.Type != ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Topup)
                     itemNode.Add("price", new YamlScalarNode(item.Price.Value.ToStringInvariant()));
+                if ((item.Price.Type == ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Minimum) && !string.IsNullOrEmpty(item.SuggestedPrice.Value.ToStringInvariant()))
+                    itemNode.Add("suggested", new YamlScalarNode(item.SuggestedPrice.Value.ToStringInvariant()));
                 if (!string.IsNullOrEmpty(item.Description))
                 {
                     itemNode.Add("description", new YamlScalarNode(item.Description)
@@ -456,6 +458,7 @@ namespace BTCPayServer.Services.Apps
                 .Select(c =>
                 {
                     ViewPointOfSaleViewModel.Item.ItemPrice price = new ViewPointOfSaleViewModel.Item.ItemPrice();
+                    ViewPointOfSaleViewModel.Item.SuggestedItemPrice suggestedPrice = new ViewPointOfSaleViewModel.Item.SuggestedItemPrice();
                     var pValue = c.GetDetail("price")?.FirstOrDefault();
 
                     switch (c.GetDetailString("custom") ?? c.GetDetailString("price_type")?.ToLowerInvariant())
@@ -467,10 +470,16 @@ namespace BTCPayServer.Services.Apps
                         case "true":
                         case "minimum":
                             price.Type = ViewPointOfSaleViewModel.Item.ItemPrice.ItemPriceType.Minimum;
+                            var pSuggestedValue = c.GetDetail("suggested")?.FirstOrDefault();
                             if (pValue != null)
                             {
                                 price.Value = decimal.Parse(pValue.Value.Value, CultureInfo.InvariantCulture);
                                 price.Formatted = Currencies.FormatCurrency(pValue.Value.Value, currency);
+                                if (pSuggestedValue != null)
+                                {
+                                    suggestedPrice.Value = decimal.Parse(pSuggestedValue.Value.Value, CultureInfo.InvariantCulture);
+                                    suggestedPrice.Formatted = Currencies.FormatCurrency(pSuggestedValue.Value.Value, currency);
+                                }
                             }
                             break;
                         case "fixed":
@@ -489,6 +498,7 @@ namespace BTCPayServer.Services.Apps
                         Image = c.GetDetailString("image"),
                         Title = c.GetDetailString("title") ?? c.Key,
                         Price = price,
+                        SuggestedPrice = suggestedPrice,
                         BuyButtonText = c.GetDetailString("buyButtonText"),
                         Inventory =
                             string.IsNullOrEmpty(c.GetDetailString("inventory"))

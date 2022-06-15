@@ -20,10 +20,16 @@ namespace BTCPayServer.Models.AppViewModels
                 public string Formatted { get; set; }
                 public decimal? Value { get; set; }
             }
+            public class SuggestedItemPrice
+            {
+                public string Formatted { get; set; }
+                public decimal? Value { get; set; }
+            }
             public string Description { get; set; }
             public string Id { get; set; }
             public string Image { get; set; }
             public ItemPrice Price { get; set; }
+            public SuggestedItemPrice SuggestedPrice { get; set; }
             public string Title { get; set; }
             public string BuyButtonText { get; set; }
             public int? Inventory { get; set; } = null;
